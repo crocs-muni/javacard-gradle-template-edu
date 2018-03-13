@@ -3,6 +3,17 @@ language: java
 jdk:
   - oraclejdk8
 
+# uncomment the applicable lines if wanting to test all applet-supported SDKs
+# env:
+# the first one is to test the usage of a default SDK
+#  -
+#  - JCSDK=jc212
+#  - JCSDK=jc221
+#  - JCSDK=jc222
+#  - JCSDK=jc303
+#  - JCSDK=jc304
+#  - JCSDK=jc305u1
+
 script:
   - ./gradlew check --info
   - ./gradlew buildJavaCard --info
