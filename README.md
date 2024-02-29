@@ -1,4 +1,10 @@
-# JavaCard Template project with Gradle
+# JavaCard Project - PV204
+
+### Team:
+- Svoboda Martin (553631)
+- Ondrej Chudacek (544028)
+- Vladimir Penaz (485278)
+
 
 [![Build Status](https://travis-ci.org/crocs-muni/javacard-gradle-template-edu.svg?branch=master)](https://travis-ci.org/crocs-muni/javacard-gradle-template-edu)
 
@@ -29,10 +35,14 @@ Running in IntelliJ Idea gives you a nice benefit: *Coverage*!
 
 ## How to use
 
-- Clone this template repository:
-
+- Clone with HTTPS:
 ```
-git clone --recursive https://github.com/crocs-muni/javacard-gradle-template-edu.git
+git clone --recursive https://github.com/xsvobod4/pv204-javacard.git
+```
+
+- Clone with SSH
+```
+git clone --recursive git@github.com:xsvobod4/pv204-javacard.git
 ```
 
 - Implement your applet in the `applet` module.
