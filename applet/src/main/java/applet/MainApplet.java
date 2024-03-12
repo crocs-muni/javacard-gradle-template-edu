@@ -3,9 +3,19 @@ package applet;
 import javacard.framework.*;
 
 public class MainApplet extends Applet implements MultiSelectable {
+	/**
+	 * TODO: fix state model (secondary state check) - teď zakomentován, protože neprošlo nic
+	 *
+	 * TODO: implement PIN (object ownerPIN), jeho ověření, změnu...
+	 *
+	 * TODO: better store of secrets
+	 *
+	 * TODO: ClientApp - lepší posílání APDUs apod
+	 * */
 
 	private static final byte INS_LIST_SECRETS = (byte) 0x01;
 	private static final byte INS_GET_SECRET_VALUE = (byte) 0x02;
+	private static final byte INS_GET_STATE = (byte) 0x03;
 
 	private static final short MAX_SECRET_COUNT = 10;
 	private static final short MAX_SECRET_NAME_LENGTH = 20;
@@ -15,19 +25,30 @@ public class MainApplet extends Applet implements MultiSelectable {
 	private byte[][] secretValues;
 	private short secretCount;
 
+	private StateModel stateModel; // Instance of StateModel
+
 	public static void install(byte[] bArray, short bOffset, byte bLength) {
 		new MainApplet(bArray, bOffset, bLength);
 	}
 
 	protected MainApplet(byte[] bArray, short bOffset, byte bLength) {
+		//first initiate in state_applet_uploaded
+		stateModel = new StateModel(StateModel.STATE_APPLET_UPLOADED);
+
 		secretNames = new byte[MAX_SECRET_COUNT][MAX_SECRET_NAME_LENGTH];
 		secretValues = new byte[MAX_SECRET_COUNT][MAX_SECRET_VALUE_LENGTH];
 		secretCount = 0;
+
 
 		// Hardcoded secret names and values
 		storeSecret("Secret1".getBytes(), "Value1".getBytes());
 		storeSecret("Secret2".getBytes(), "Value2".getBytes());
 		storeSecret("Secret3".getBytes(), "Value3".getBytes());
+
+		// more state changes just for demo purposes
+		// stateModel.setSecondaryState(StateModel.SECURE_CHANNEL_ESTABLISHED);
+		stateModel.changeState(StateModel.STATE_GENERATE_KEYPAIR);
+		stateModel.changeState(StateModel.STATE_UNPRIVILEGED);
 
 		register();
 	}
@@ -44,10 +65,20 @@ public class MainApplet extends Applet implements MultiSelectable {
 
 		switch (ins) {
 			case INS_LIST_SECRETS:
+				// Check if the function is allowed in the current state
+				stateModel.checkAllowedFunction(StateModel.FNC_lookupSecretNames);
 				listSecrets(apdu);
 				break;
 			case INS_GET_SECRET_VALUE:
+				// demo - change state to priviledged
+				stateModel.changeState(StateModel.STATE_PRIVILEGED);
+				// Check if the function is allowed in the current state
+				stateModel.checkAllowedFunction(StateModel.FNC_lookupSecret);
 				getSecretValue(apdu, dataLength);
+				break;
+			case INS_GET_STATE:
+				// Return the current state of the applet
+				sendState(apdu);
 				break;
 			default:
 				ISOException.throwIt(ISO7816.SW_INS_NOT_SUPPORTED);
@@ -164,6 +195,13 @@ public class MainApplet extends Applet implements MultiSelectable {
 
 		// If no match found, send an error response
 		ISOException.throwIt(ISO7816.SW_DATA_INVALID);
+	}
+
+	private void sendState(APDU apdu) {
+		byte[] buffer = apdu.getBuffer();
+		short currentState = stateModel.getState();
+		Util.setShort(buffer, (short) 0, currentState);
+		apdu.setOutgoingAndSend((short) 0, (short) 2); // Assuming state is represented by a short (2 bytes)
 	}
 /*
 	private void verifyPIN(APDU apdu) {

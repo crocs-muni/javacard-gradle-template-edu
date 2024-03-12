@@ -47,10 +47,16 @@ public class ClientApp {
                 (byte) 0x00, // P2
                 data         // Data
         );
-
         // Transmit the APDU command to the JavaCard applet
         ResponseAPDU responseReveal = simulator.transmitCommand(revealSecretApdu);
         System.out.println(new String(responseReveal.getData()));
+
+        CommandAPDU commandGetState = new CommandAPDU(0x00, 0x03, 0x00, 0x00);
+        ResponseAPDU responseGetState = simulator.transmitCommand(commandGetState);
+        System.out.println(TypeConverter.bytesToHex(responseGetState.getData()));
+
+
+
     }
 }
 
