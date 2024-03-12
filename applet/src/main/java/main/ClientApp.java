@@ -4,10 +4,13 @@ import applet.MainApplet;
 import com.licel.jcardsim.smartcardio.CardSimulator;
 import com.licel.jcardsim.utils.AIDUtil;
 import javacard.framework.AID;
+import main.utils.ApduFactory;
+import main.utils.TypeConverter;
 
 import javax.smartcardio.CommandAPDU;
 import javax.smartcardio.ResponseAPDU;
 import javax.smartcardio.TerminalFactory;
+import java.nio.charset.StandardCharsets;
 
 public class ClientApp {
 
@@ -26,9 +29,29 @@ public class ClientApp {
         simulator.selectApplet(appletAID);
 
         // 4. send APDU
-        CommandAPDU commandAPDU = new CommandAPDU(0x00, 0x90, 0x00, 0x00);
-        ResponseAPDU response = simulator.transmitCommand(commandAPDU);
+        CommandAPDU commandAPDUList = new CommandAPDU(0x00, 0x01, 0x00, 0x00);
+        ResponseAPDU responseList = simulator.transmitCommand(commandAPDUList);
+        System.out.println(new String(responseList.getData()));
 
-        System.out.println(new String(response.getData()));
+
+
+        byte[] secretName = "Secret1".getBytes();
+        byte[] data = new byte[secretName.length + 1];
+        data[0] = (byte) secretName.length;
+        System.arraycopy(secretName, 0, data, 1, secretName.length);
+
+        CommandAPDU revealSecretApdu = ApduFactory.createAPDU(
+                (byte) 0x00, // CLA
+                (byte) 0x02, // INS_GET_SECRET_VALUE
+                (byte) 0x00, // P1
+                (byte) 0x00, // P2
+                data         // Data
+        );
+
+        // Transmit the APDU command to the JavaCard applet
+        ResponseAPDU responseReveal = simulator.transmitCommand(revealSecretApdu);
+        System.out.println(new String(responseReveal.getData()));
     }
 }
+
+
