@@ -1,13 +1,17 @@
 package main;
 
-import applet.HelloWorldApplet;
 import applet.MainApplet;
 import com.licel.jcardsim.smartcardio.CardSimulator;
 import com.licel.jcardsim.utils.AIDUtil;
 import javacard.framework.AID;
-import javax.smartcardio.*;
 
-public class Run {
+import javax.smartcardio.CommandAPDU;
+import javax.smartcardio.ResponseAPDU;
+import javax.smartcardio.TerminalFactory;
+
+public class ClientApp {
+
+
     public static void main(String[] args){
         // 1. create simulator
         CardSimulator simulator = new CardSimulator();
@@ -27,5 +31,4 @@ public class Run {
 
         System.out.println(new String(response.getData()));
     }
-
 }
