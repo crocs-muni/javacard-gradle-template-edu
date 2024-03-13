@@ -49,7 +49,7 @@ public class StateModel {
         // Check allowed function in current state
         checkAllowedFunction(requestedFnc, STATE_CURRENT);
         // // Check secondary state (if required)
-        checkAllowedFunctionSecondary(requestedFnc, STATE_SECONDARY);
+        // checkAllowedFunctionSecondary(requestedFnc, STATE_SECONDARY);
     }
 
     public short changeState(short newState) {
