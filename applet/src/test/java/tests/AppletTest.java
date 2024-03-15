@@ -1,7 +1,6 @@
 package tests;
 
 import cardTools.CardType;
-import cardTools.RunConfig;
 import org.junit.Assert;
 import org.junit.jupiter.api.*;
 

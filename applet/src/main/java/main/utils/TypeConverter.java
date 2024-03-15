@@ -1,7 +1,7 @@
 package main.utils;
 
 public class TypeConverter {
-    //From the third seminar
+    //From the third seminar of PV204. Not mine.
     public static byte[] hexStringToByteArray(String s) {
         String sanitized = s.replace(" ", "");
         byte[] b = new byte[sanitized.length() / 2];
@@ -13,7 +13,7 @@ public class TypeConverter {
         return b;
     }
 
-    //From the third seminar
+    //From the third seminar of PV204. Not mine.
     public static String bytesToHex(byte[] bytes) {
         char[] hexArray = "0123456789ABCDEF".toCharArray();
         char[] hexChars = new char[bytes.length * 2];
