@@ -78,13 +78,27 @@ task dumpClassPath(dependsOn: ['idea']) {
 }
 
 application {
-    mainClass = 'main.Run'
+    mainClass = 'main.ClientApp'
 }
+
+jar {
+    duplicatesStrategy = 'exclude'
+    exclude('META-INF/*.SF', 'META-INF/*.DSA', 'META-INF/*.RSA')
+
+    manifest {
+        attributes 'Main-Class': 'main.ClientApp'
+    }
+    from {
+        configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
+    }
+}
+
 
 test {
     // useTestNG()
     useJUnitPlatform {
-        excludeTags 'manual'
+        // excludeTags 'manual'
+        // excludeClassNamePatterns '.**/*AppletTest'
     }
 
     task manualTests(type: Test) {
