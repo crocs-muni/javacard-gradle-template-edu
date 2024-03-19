@@ -23,12 +23,22 @@ public class ApduFactoryTest {
 
     @Test
     public void testRevealSecretApdu() {
-        CommandAPDU commandAPDU = ApduFactory.revealSecretApdu("1234", "11");
+        CommandAPDU commandAPDU = ApduFactory.revealSecretApdu("1234", (byte) 0x01);
         assertEquals(ClassConstants.CLA_BASIC, commandAPDU.getCLA());
         assertEquals(InstructionConstants.INS_REVEAL_SECRET, commandAPDU.getINS());
         assertEquals(OffsetConstants.OFFSET_NULL, commandAPDU.getP1());
         assertEquals(OffsetConstants.OFFSET_NULL, commandAPDU.getP2());
-        assertEquals(TypeConverter.hexStringToByteArray("123411"), commandAPDU.getData());
+        assertEquals(TypeConverter.hexStringToByteArray("12341"), commandAPDU.getData());
+    }
+
+    @Test
+    public void testRevealSecretApdu2() {
+        CommandAPDU commandAPDU = ApduFactory.revealSecretApdu("1234", (byte) 0x0c);
+        assertEquals(ClassConstants.CLA_BASIC, commandAPDU.getCLA());
+        assertEquals(InstructionConstants.INS_REVEAL_SECRET, commandAPDU.getINS());
+        assertEquals(OffsetConstants.OFFSET_NULL, commandAPDU.getP1());
+        assertEquals(OffsetConstants.OFFSET_NULL, commandAPDU.getP2());
+        assertEquals(TypeConverter.hexStringToByteArray("1234C"), commandAPDU.getData());
     }
 
     @Test

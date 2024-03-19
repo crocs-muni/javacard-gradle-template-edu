@@ -1,5 +1,6 @@
 package main.utils;
 
+import main.utils.constants.IndexMapper;
 import main.utils.enums.CardType;
 import main.utils.enums.Instruction;
 import sun.reflect.generics.reflectiveObjects.NotImplementedException;
@@ -11,7 +12,7 @@ public class InputParser {
     private Instruction instruction = null;
     private String pin = null;
     private String newPin = null;
-    private String key = null;
+    private Byte key = null;
 
     private static final int PIN_LENGTH = ApduFactory.PIN_LENGTH;
     private static final int KEY_LENGTH = 15;
@@ -89,7 +90,7 @@ public class InputParser {
         System.out.println("Instruction options:");
         System.out.println("-p, --pin <pin>\tFour digit card PIN.");
         System.out.println("-n, --new_pin <pin>\tNew four digit PIN for PIN change.");
-        System.out.printf("-k, --key <key>\tQuery data key. Should be a number 1-%d.", KEY_LENGTH);
+        System.out.printf("-k, --key <key>\tQuery data key. Should be a number 1-%d or the name of the slot.", KEY_LENGTH);
 
         System.out.println("Card types:");
         System.out.println("sim\tSimulated card.");
@@ -174,21 +175,33 @@ public class InputParser {
      * @param key Query key
      * @return Sanitized query key
      */
-    private String sanitizeKey(String key) {
+    private Byte sanitizeKey(String key) {
 
         String trimmedKey = key.trim();
 
-        try {
-            //Key is a postive intere of max value of KEY_LENGTH
-            if (Integer.parseInt(trimmedKey) < 1 || Integer.parseInt(trimmedKey) > KEY_LENGTH) {
-                throw new IllegalArgumentException("Invalid key: " + trimmedKey);
-            }
-        } catch (NumberFormatException e) {
-            printHelp();
-            throw new IllegalArgumentException("Invalid key: " + trimmedKey);
-        }
+       if (!trimmedKey.chars().allMatch(Character::isDigit)) {
+           Byte keyIndex = IndexMapper.NAME_TO_INDEX.get(key);
 
-        return trimmedKey;
+           if (keyIndex == null) {
+               throw new IllegalArgumentException("Query key does not exist: " + key);
+           }
+
+           return keyIndex;
+       }
+
+       try {
+           short shortKey = Byte.parseByte(trimmedKey);
+
+           if (shortKey < (short) 0 || shortKey > (short) KEY_LENGTH) {
+               throw new IllegalArgumentException("Key must be of value 0-" + KEY_LENGTH);
+           } else {
+               return (byte) shortKey;
+           }
+
+       } catch (NumberFormatException e) {
+           throw new IllegalArgumentException("Key is not of short type: " + key);
+       }
+
     }
 
     /**
@@ -247,7 +260,7 @@ public class InputParser {
         return newPin;
     }
 
-    public String getKey() {
+    public Byte getKey() {
         return key;
     }
 

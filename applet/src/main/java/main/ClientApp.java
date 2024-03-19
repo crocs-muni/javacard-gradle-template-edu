@@ -61,7 +61,7 @@ public class ClientApp {
         }
     }
 
-    private static void revealSecret(String pin, String key, ICard card) {
+    private static void revealSecret(String pin, Byte key, ICard card) {
         String secret = card.revealSecret(pin, key);
         //Simply prints the secret onto the screen. Can be used for piping.
         System.out.println(secret);

@@ -78,7 +78,7 @@ public class RealCard implements ICard {
     }
 
     @Override
-    public String revealSecret(String pin, String key) {
+    public String revealSecret(String pin, Byte key) {
         try {
             select();
             CommandAPDU commandAPDU = ApduFactory.revealSecretApdu(pin, key);
