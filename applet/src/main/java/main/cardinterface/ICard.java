@@ -31,7 +31,7 @@ public interface ICard {
      * @param key Query key
      * @return the secret
      */
-    String revealSecret(String pin, String key);
+    String revealSecret(String pin, Byte key);
     /**
      * Changes PIN of the card.
      *

@@ -68,22 +68,22 @@ public class ApduFactory {
      * @param key Key
      * @return Built APDU
      */
-    public static CommandAPDU revealSecretApdu(String pin, String key) {
+    public static CommandAPDU revealSecretApdu(String pin, Byte key) {
 
         if (pin.length() != PIN_LENGTH) {
             throw new DataLengthException("Pin is of incorrect length");
         }
 
-        if (key.length() != KEY_LENGTH) {
+        if ((short) key > KEY_LENGTH || (short) key < (short) 0) {
             throw new DataLengthException("Data key is of incorrect length");
         }
 
         return genericApdu(
                 ClassConstants.CLA_BASIC,
                 InstructionConstants.INS_REVEAL_SECRET,
+                key,
                 OffsetConstants.OFFSET_NULL,
-                OffsetConstants.OFFSET_NULL,
-                TypeConverter.hexStringToByteArray(pin+key));
+                TypeConverter.hexStringToByteArray(pin));
     }
 
     /**

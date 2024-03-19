@@ -55,21 +55,37 @@ public class InputParserTest {
     @Test
     public void testCorrectRevealSecret() {
         InputParser inputParser = new InputParser();
-        inputParser.parseArgs(new String[]{"-c", "sim", "-i", "reveal_secret", "-p", "1234", "-k", "11"});
+        inputParser.parseArgs(new String[]{"-c", "sim", "-i", "reveal_secret", "-p", "1234", "-k", "7"});
         assertEquals(CardType.SIMULATED, inputParser.getCardType());
         assertEquals(Instruction.REVEAL_SECRET, inputParser.getInstruction());
         assertEquals("1234", inputParser.getPin());
-        assertEquals("11", inputParser.getKey());
+        assertEquals(Byte.valueOf((byte) 0x07), inputParser.getKey());
     }
 
     @Test
     public void testCorrectRevealSecret2() {
         InputParser inputParser = new InputParser();
-        inputParser.parseArgs(new String[]{"-c", "real", "-i", "reveal_secret", "-k", "11", "-p", "1234"});
+        inputParser.parseArgs(new String[]{"-c", "real", "-i", "reveal_secret", "-k", "OTHER4", "-p", "1234"});
         assertEquals(CardType.REAL, inputParser.getCardType());
         assertEquals(Instruction.REVEAL_SECRET, inputParser.getInstruction());
         assertEquals("1234", inputParser.getPin());
-        assertEquals("11", inputParser.getKey());
+        assertEquals(Byte.valueOf((byte) 0x0E), inputParser.getKey());
+    }
+
+    @Test
+    public void testWrongKeyLookup() {
+        InputParser inputParser = new InputParser();
+        assertThrows(IllegalArgumentException.class, () -> {
+            inputParser.parseArgs(new String[]{"-c", "real", "-i", "reveal_secret", "-k", "AS445cDIFU", "-p", "1234"});
+        });
+    }
+
+    @Test
+    public void testOutOfBoundsKey() {
+        InputParser inputParser = new InputParser();
+        assertThrows(IllegalArgumentException.class, () -> {
+            inputParser.parseArgs(new String[]{"-c", "real", "-i", "reveal_secret", "-k", "16", "-p", "1234"});
+        });
     }
 
     @Test

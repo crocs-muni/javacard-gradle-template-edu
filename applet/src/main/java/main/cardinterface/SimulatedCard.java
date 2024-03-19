@@ -50,7 +50,6 @@ public class SimulatedCard implements ICard {
 
     @Override
     public ArrayList<String> getSecretNames() {
-        ArrayList<String> secretNames = new ArrayList<>();
 
         simulator.selectApplet(appletAID);
         CommandAPDU commandAPDU = ApduFactory.requestSecretNamesApdu();
@@ -64,7 +63,7 @@ public class SimulatedCard implements ICard {
     }
 
     @Override
-    public String revealSecret(String pin, String key) {
+    public String revealSecret(String pin, Byte key) {
         simulator.selectApplet(appletAID);
 
         CommandAPDU commandAPDU = ApduFactory.revealSecretApdu(pin, key);
