@@ -81,9 +81,9 @@ public class ApduFactory {
         return genericApdu(
                 ClassConstants.CLA_BASIC,
                 InstructionConstants.INS_REVEAL_SECRET,
+                key,
                 OffsetConstants.OFFSET_NULL,
-                OffsetConstants.OFFSET_NULL,
-                TypeConverter.hexStringToByteArray(pin+key));
+                TypeConverter.hexStringToByteArray(pin));
     }
 
     /**
