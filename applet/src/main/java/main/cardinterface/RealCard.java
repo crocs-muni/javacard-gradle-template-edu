@@ -60,7 +60,7 @@ public class RealCard implements ICard {
     }
 
     @Override
-    public ArrayList<String> getSecretNames() {
+    public byte[] getSecretNames() {
 
         try {
             select();
@@ -71,7 +71,7 @@ public class RealCard implements ICard {
                 throw new CardRuntimeException("Failed to get secret names. Card code: " + responseAPDU.getSW());
             }
 
-            return DataFormatProcessor.processKeyRequestApdu(responseAPDU.getData());
+            return responseAPDU.getData();
         } catch (CardException e) {
             throw new CardRuntimeException("Card connection problem. Failed to get secret names. Card code: " + e.getMessage());
         }

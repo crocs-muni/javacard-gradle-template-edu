@@ -49,7 +49,7 @@ public class SimulatedCard implements ICard {
     }
 
     @Override
-    public ArrayList<String> getSecretNames() {
+    public byte[] getSecretNames() {
 
         simulator.selectApplet(appletAID);
         CommandAPDU commandAPDU = ApduFactory.requestSecretNamesApdu();
@@ -59,7 +59,7 @@ public class SimulatedCard implements ICard {
             throw new CardRuntimeException("Failed to get secret names. Card code: " + responseAPDU.getSW());
         }
 
-        return DataFormatProcessor.processKeyRequestApdu(responseAPDU.getData());
+        return responseAPDU.getData();
     }
 
     @Override

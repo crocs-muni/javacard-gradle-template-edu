@@ -21,9 +21,9 @@ public interface ICard {
      * Get a list of secret names from the card.
      * Does not require a PIN.
      *
-     * @return the list of secret names
+     * @return the array of secret names
      */
-    ArrayList<String> getSecretNames();
+    byte[] getSecretNames();
     /**
      * Reveal a secret from the card by a query key.
      *

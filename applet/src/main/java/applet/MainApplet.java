@@ -21,12 +21,16 @@ public class MainApplet extends Applet implements MultiSelectable {
 	static final byte INS_VERIFY_PIN = (byte) 0x04;
 	static final byte INS_CHANGE_PIN = (byte) 0x05;
 
-	private static final short MAX_SECRET_COUNT = 10;
+	private static final short MAX_SECRET_COUNT = 16;
 	private static final short MAX_SECRET_NAME_LENGTH = 20;
-	private static final short MAX_SECRET_VALUE_LENGTH = 20;
+	static final short MAX_SECRET_VALUE_LENGTH = 20;
 
-	private byte[][] secretNames;
-	private byte[][] secretValues;
+	public final byte SECRET_NOT_FILLED = (byte) 0xC4;
+	public final byte SECRET_FILLED = (byte) 0x26;
+
+	//Content of secrets
+	private SecretStore[] secretValues;
+	private byte[] secretStatus;
 	private short secretCount;
 
 	private OwnerPIN pin;
@@ -48,17 +52,26 @@ public class MainApplet extends Applet implements MultiSelectable {
 		//first initiate in state_applet_uploaded
 		stateModel = new StateModel(StateModel.STATE_APPLET_UPLOADED);
 
-		secretNames = new byte[MAX_SECRET_COUNT][MAX_SECRET_NAME_LENGTH];
-		secretValues = new byte[MAX_SECRET_COUNT][MAX_SECRET_VALUE_LENGTH];
+		secretValues = new SecretStore[MAX_SECRET_COUNT];
+		secretStatus = new byte[MAX_SECRET_COUNT];
+
+		for (short i = (short) 0; i < MAX_SECRET_COUNT; i++) {
+			secretValues[i] = new SecretStore();
+		}
+
+		for (short i = (short) 0; i < MAX_SECRET_COUNT; i++) {
+			secretStatus[i] = SECRET_NOT_FILLED;
+		}
+
 		secretCount = 0;
 
 		pin = new OwnerPIN(PIN_MAX_RETRIES, PIN_LENGTH);
 		pin.update(DEFAULT_PIN, (short) 0, PIN_LENGTH);
 
 		// Hardcoded secret names and values
-		storeSecret("Secret1".getBytes(), "Value1".getBytes());
-		storeSecret("Secret2".getBytes(), "Value2".getBytes());
-		storeSecret("Secret3".getBytes(), "Value3".getBytes());
+		storeSecret((byte) 0x01, "Value1".getBytes());
+		storeSecret((byte) 0x07, "Value2".getBytes());
+		storeSecret((byte) 0x0A, "Value3".getBytes());
 
 		// more state changes just for demo purposes
 		// stateModel.setSecondaryState(StateModel.SECURE_CHANNEL_ESTABLISHED);
@@ -108,18 +121,10 @@ public class MainApplet extends Applet implements MultiSelectable {
 
 	private void listSecrets(APDU apdu) {
 		byte[] buffer = apdu.getBuffer();
-		short len = 0;
+		short len = (short) 0;
 
-		// Prepare response with secret names
-		for (short i = 0; i < secretCount; i++) {
-			// Find the end of the secret name
-			short nameLength = secretNames[i][0]; // Get the stored name length
-			// Copy the secret name to the response buffer, skipping the first byte (length)
-			Util.arrayCopyNonAtomic(secretNames[i], (short) 1, buffer, len, nameLength);
-			len += nameLength;
-			// Add a newline character for formatting
-			buffer[len++] = '\n';
-		}
+		// Copy statuses of secrets (filled/not filled) into the response
+		Util.arrayCopyNonAtomic(secretStatus, (short) 0, buffer, (short) 0, MAX_SECRET_COUNT);
 
 		// Send response
 		apdu.setOutgoingAndSend((short) 0, len);
@@ -133,7 +138,8 @@ public class MainApplet extends Applet implements MultiSelectable {
 
 	}
 
-	private void storeSecret(byte[] name, byte[] value) {
+	//TODO: Add value to the SecretStore array and set the secret (at the same index) to filled status
+	private void storeSecret(byte name, byte[] value) {
 		if (secretCount < MAX_SECRET_COUNT) {
 			// Ensure the lengths of name and value are within the maximum limits
 			if (name.length <= MAX_SECRET_NAME_LENGTH && value.length <= MAX_SECRET_VALUE_LENGTH) {
@@ -182,6 +188,7 @@ public class MainApplet extends Applet implements MultiSelectable {
 		}
 
 		// Compare the provided secret name with stored names
+		//TODO: Simply use O(1) array access to get the secret (no for). Check if the secret is filled first.
 		for (short i = 0; i < secretCount; i++) {
 			// Get the stored secret name and its length
 			short storedNameLength = secretNames[i][0];

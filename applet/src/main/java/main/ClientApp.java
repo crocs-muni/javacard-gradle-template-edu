@@ -5,6 +5,7 @@ import main.cardinterface.RealCard;
 import main.cardinterface.SimulatedCard;
 import main.utils.InputParser;
 import main.utils.constants.CardSettings;
+import main.utils.constants.ReturnMsgConstants;
 import main.utils.enums.CardType;
 
 import javax.smartcardio.CardException;
@@ -68,10 +69,12 @@ public class ClientApp {
     }
 
     private static void getSecretNames(ICard card) {
-        ArrayList<String> secretNames = card.getSecretNames();
+        byte[] secretNames = card.getSecretNames();
         //Simply prints the secret names onto the screen. Can be used for piping.
-        for (String secretName : secretNames) {
-            System.out.println(secretName);
+        for (short i = (short) 0; i < secretNames.length; i++) {
+            if (secretNames[i] == ReturnMsgConstants.SECRET_FILLED) {
+                System.out.println(i);
+            }
         }
     }
 }
