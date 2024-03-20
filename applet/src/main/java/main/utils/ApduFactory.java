@@ -23,7 +23,8 @@ public class ApduFactory {
      * @param data APDU data
      * @return Built APDU
      */
-    private static CommandAPDU genericApdu(int cla, int ins, int p1, int p2, byte[] data) {
+    //TODO: Make private
+    public static CommandAPDU genericApdu(int cla, int ins, int p1, int p2, byte[] data) {
         return new CommandAPDU(cla, ins, p1, p2, data);
     }
 

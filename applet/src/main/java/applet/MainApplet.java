@@ -1,5 +1,7 @@
 package applet;
 
+import java.util.Arrays;
+
 import javacard.framework.*;
 
 public class MainApplet extends Applet implements MultiSelectable {
@@ -16,6 +18,8 @@ public class MainApplet extends Applet implements MultiSelectable {
 	private static final byte INS_LIST_SECRETS = (byte) 0x01;
 	private static final byte INS_GET_SECRET_VALUE = (byte) 0x02;
 	private static final byte INS_GET_STATE = (byte) 0x03;
+	static final byte INS_VERIFY_PIN = (byte) 0x04;
+	static final byte INS_CHANGE_PIN = (byte) 0x05;
 
 	private static final short MAX_SECRET_COUNT = 10;
 	private static final short MAX_SECRET_NAME_LENGTH = 20;
@@ -25,6 +29,15 @@ public class MainApplet extends Applet implements MultiSelectable {
 	private byte[][] secretValues;
 	private short secretCount;
 
+	private OwnerPIN pin;
+	static final byte PIN_LENGTH = (byte) 0x04;
+	static final byte PIN_MAX_RETRIES = (byte) 0x03;
+	private final byte[] DEFAULT_PIN = {(byte) 0x01, (byte) 0x02, (byte) 0x03, (byte) 0x04};
+
+	private final byte[] SECOND_PIN = {(byte) 0x02, (byte) 0x02, (byte) 0x04, (byte) 0x04};
+
+	private final byte RTR_PIN_SUCCESS = (byte) 0x90;
+	private final byte RTR_PIN_FAILED = (byte) 0xCF;
 	private StateModel stateModel; // Instance of StateModel
 
 	public static void install(byte[] bArray, short bOffset, byte bLength) {
@@ -39,6 +52,8 @@ public class MainApplet extends Applet implements MultiSelectable {
 		secretValues = new byte[MAX_SECRET_COUNT][MAX_SECRET_VALUE_LENGTH];
 		secretCount = 0;
 
+		pin = new OwnerPIN(PIN_MAX_RETRIES, PIN_LENGTH);
+		pin.update(DEFAULT_PIN, (short) 0, PIN_LENGTH);
 
 		// Hardcoded secret names and values
 		storeSecret("Secret1".getBytes(), "Value1".getBytes());
@@ -71,14 +86,20 @@ public class MainApplet extends Applet implements MultiSelectable {
 				break;
 			case INS_GET_SECRET_VALUE:
 				// demo - change state to priviledged
-				stateModel.changeState(StateModel.STATE_PRIVILEGED);
-				// Check if the function is allowed in the current state
-				stateModel.checkAllowedFunction(StateModel.FNC_lookupSecret);
+//				stateModel.changeState(StateModel.STATE_PRIVILEGED);
+//				// Check if the function is allowed in the current state
+//				stateModel.checkAllowedFunction(StateModel.FNC_lookupSecret);
 				getSecretValue(apdu, dataLength);
 				break;
 			case INS_GET_STATE:
 				// Return the current state of the applet
 				sendState(apdu);
+				break;
+			case INS_CHANGE_PIN:
+				updatePIN(apdu);
+				break;
+			case INS_VERIFY_PIN:
+				verifyPIN(apdu,(short) 5, (short) 9);
 				break;
 			default:
 				ISOException.throwIt(ISO7816.SW_INS_NOT_SUPPORTED);
@@ -141,6 +162,11 @@ public class MainApplet extends Applet implements MultiSelectable {
 	}
 
 	private void getSecretValue(APDU apdu, short dataLength) {
+		if (verifyPIN(apdu,(short) 6, (short) 10) != RTR_PIN_SUCCESS)
+			ISOException.throwIt((short)((short) 0x63c0 | (short) pin.getTriesRemaining()));
+
+		stateModel.changeState(StateModel.STATE_PRIVILEGED);
+
 		byte[] apduBuffer = apdu.getBuffer();
 
 		// Check if the data length is at least one byte
@@ -170,7 +196,7 @@ public class MainApplet extends Applet implements MultiSelectable {
 			// Compare each byte of the name
 			boolean match = true;
 			for (short j = 0; j < nameLength; j++) {
-				if (apduBuffer[nameOffset + j + 1] != storedName[j]) {
+				if (apduBuffer[nameOffset + PIN_LENGTH + j + 1] != storedName[j]) {
 					match = false;
 					break;
 				}
@@ -213,4 +239,33 @@ public class MainApplet extends Applet implements MultiSelectable {
 		}
 	}
 */
+	// Method to verify PIN
+	private byte verifyPIN(APDU apdu, short startInter, short endInter) {
+		byte[] pinAttempt = getPinFromBuffer(apdu.getBuffer(),startInter,endInter);
+		return pin.check(pinAttempt, (short) 0, (byte) pinAttempt.length) ? RTR_PIN_SUCCESS : RTR_PIN_FAILED;
+	}
+
+	private byte[] getPinFromBuffer(byte[] buffer, short startInter, short endInter) {
+		String pinBuffer = new String(Arrays.copyOfRange(buffer, startInter, endInter));
+		byte[] bufferPIN = new byte[4];
+
+		for (short i = 0; i < pinBuffer.length(); i++) {
+			bufferPIN[i] = (byte) Character.getNumericValue(pinBuffer.charAt(i));
+		}
+		return bufferPIN;
+	}
+
+	private byte updatePIN(APDU apdu) {
+
+		if (verifyPIN(apdu,(short) 5, (short) 9) != RTR_PIN_SUCCESS)
+			ISOException.throwIt((short)((short) 0x63c0 | (short) pin.getTriesRemaining()));
+
+//		stateModel.changeState(StateModel.STATE_PRIVILEGED);
+
+		byte[] newPin = getPinFromBuffer(apdu.getBuffer(),(short) 9,(short) 13);
+		pin.update(newPin, (short) 0, (byte) PIN_LENGTH);
+
+//		stateModel.changeState(StateModel.STATE_UNPRIVILEGED);
+		return RTR_PIN_SUCCESS;
+	}
 }
