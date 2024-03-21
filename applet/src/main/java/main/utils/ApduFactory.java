@@ -45,7 +45,7 @@ public class ApduFactory {
                 InstructionConstants.INS_CHANGE_PIN,
                 OffsetConstants.OFFSET_NULL,
                 OffsetConstants.OFFSET_NULL,
-                TypeConverter.hexStringToByteArray(pin));
+                TypeConverter.stringIntToByteArray(pin));
     }
 
     /**
@@ -84,7 +84,7 @@ public class ApduFactory {
                 InstructionConstants.INS_REVEAL_SECRET,
                 key,
                 OffsetConstants.OFFSET_NULL,
-                TypeConverter.hexStringToByteArray(pin));
+                TypeConverter.stringIntToByteArray(pin));
     }
 
     /**
@@ -109,7 +109,7 @@ public class ApduFactory {
                 InstructionConstants.INS_CHANGE_PIN,
                 OffsetConstants.OFFSET_NULL,
                 OffsetConstants.OFFSET_NULL,
-                TypeConverter.hexStringToByteArray(oldPin+newPin));
+                TypeConverter.stringIntToByteArray(oldPin+newPin));
     }
 
     /**

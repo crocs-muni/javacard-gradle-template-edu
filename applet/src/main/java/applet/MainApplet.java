@@ -16,11 +16,11 @@ public class MainApplet extends Applet implements MultiSelectable {
 	 * TODO: ClientApp - lepší posílání APDUs apod
 	 * */
 
-	private static final byte INS_LIST_SECRETS = (byte) 0x01;
-	private static final byte INS_GET_SECRET_VALUE = (byte) 0x02;
-	private static final byte INS_GET_STATE = (byte) 0x03;
-	static final byte INS_VERIFY_PIN = (byte) 0x04;
-	static final byte INS_CHANGE_PIN = (byte) 0x05;
+	private static final byte INS_LIST_SECRETS = (byte) 0xD7;
+	private static final byte INS_GET_SECRET_VALUE = (byte) 0x11;
+	private static final byte INS_GET_STATE = (byte) 0x1C;
+	static final byte INS_VERIFY_PIN = (byte) 0x1D;
+	static final byte INS_CHANGE_PIN = (byte) 0xC2;
 
 	private static final short MAX_SECRET_COUNT = 16;
 	private static final short MAX_SECRET_NAME_LENGTH = 20;
@@ -188,7 +188,7 @@ public class MainApplet extends Applet implements MultiSelectable {
 
 		// Verify PIN
 		if (verifyPIN(apdu, ISO7816.OFFSET_CDATA, (short) 9) != RTR_PIN_SUCCESS) {
-			ISOException.throwIt((short)((short) 0x63c0 | (short) pin.getTriesRemaining()));
+			ISOException.throwIt(ISO7816.SW_SECURITY_STATUS_NOT_SATISFIED);
 		}
 
 		byte[] apduBuffer = apdu.getBuffer();
@@ -246,7 +246,7 @@ public class MainApplet extends Applet implements MultiSelectable {
 		byte[] apduBuffer = apdu.getBuffer();
 
 		if (verifyPIN(apdu,PIN_DEFAULT_OFFSETS[0], PIN_DEFAULT_OFFSETS[1]) != RTR_PIN_SUCCESS)
-			ISOException.throwIt((short)((short) 0x63c0 | (short) pin.getTriesRemaining()));
+			ISOException.throwIt(ISO7816.SW_SECURITY_STATUS_NOT_SATISFIED);
 
 		stateModel.changeState(StateModel.STATE_PRIVILEGED);
 		pin.update(apduBuffer, PIN_DEFAULT_OFFSETS[2], PIN_LENGTH);

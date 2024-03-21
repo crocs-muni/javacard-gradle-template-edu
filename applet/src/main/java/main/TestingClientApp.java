@@ -7,6 +7,7 @@ import javacard.framework.AID;
 import javacard.framework.Util;
 import main.utils.ApduFactory;
 import main.utils.TypeConverter;
+import main.utils.constants.InstructionConstants;
 
 import javax.smartcardio.CommandAPDU;
 import javax.smartcardio.ResponseAPDU;
@@ -29,7 +30,7 @@ public class TestingClientApp {
         simulator.selectApplet(appletAID);
 
         // 4. send APDU
-        CommandAPDU commandAPDUList = new CommandAPDU(0x00, 0x01, 0x00, 0x00);
+        CommandAPDU commandAPDUList = new CommandAPDU(0x00, InstructionConstants.INS_GET_SECRET_NAMES, 0x00, 0x00);
         ResponseAPDU responseList = simulator.transmitCommand(commandAPDUList);
         System.out.println("List secrets:");
         System.out.println("Data length:" + responseList.getData().length);
@@ -41,7 +42,7 @@ public class TestingClientApp {
 
         CommandAPDU revealSecretApdu = ApduFactory.genericApdu(
                 (byte) 0x00, // CLA
-                (byte) 0x02, // INS_GET_SECRET_VALUE
+                (byte) InstructionConstants.INS_REVEAL_SECRET, // INS_GET_SECRET_VALUE
                 secretName, // P1
                 (byte) 0x00, // P2
                 DEFAULT_PIN         // Data
@@ -52,14 +53,14 @@ public class TestingClientApp {
         System.out.println(new String(responseReveal.getData()));
         System.out.println("SW: " + (short) responseReveal.getSW());
 
-        CommandAPDU commandGetState = new CommandAPDU(0x00, 0x03, 0x00, 0x00);
+        CommandAPDU commandGetState = new CommandAPDU(0x00, InstructionConstants.INS_GET_STATE, 0x00, 0x00);
         ResponseAPDU responseGetState = simulator.transmitCommand(commandGetState);
         System.out.println("Get state:");
         System.out.println(TypeConverter.bytesToHex(responseGetState.getData()));
 
 
-        CommandAPDU pinCheck = new CommandAPDU(0x00, 0x04, 0x00, 0x00, DEFAULT_PIN);
-        ResponseAPDU responseVerifyPIN = simulator.transmitCommand(pinCheck);
+        //CommandAPDU pinCheck = new CommandAPDU(0x00, 0x04, 0x00, 0x00, DEFAULT_PIN);
+        //ResponseAPDU responseVerifyPIN = simulator.transmitCommand(pinCheck);
 //        System.out.println(TypeConverter.bytesToHex(responseVerifyPIN.getData()));
 
 
@@ -72,7 +73,7 @@ public class TestingClientApp {
         System.arraycopy(DEFAULT_PIN, 0, pinData, 0, DEFAULT_PIN.length);
         System.arraycopy(NEW_PIN, 0, pinData, DEFAULT_PIN.length, NEW_PIN.length);
 
-        CommandAPDU pinChange = new CommandAPDU(0x00, 0x05, 0x00, 0x00, pinData);
+        CommandAPDU pinChange = new CommandAPDU(0x00, InstructionConstants.INS_CHANGE_PIN, 0x00, 0x00, pinData);
         ResponseAPDU responseChangePIN = simulator.transmitCommand(pinChange);
         System.out.println("Change PIN:");
         System.out.println("Rtr: " + (short) responseChangePIN.getSW());
