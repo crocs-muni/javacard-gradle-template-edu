@@ -4,6 +4,7 @@ import applet.MainApplet;
 import com.licel.jcardsim.smartcardio.CardSimulator;
 import com.licel.jcardsim.utils.AIDUtil;
 import javacard.framework.AID;
+import javacard.framework.Util;
 import main.utils.ApduFactory;
 import main.utils.TypeConverter;
 
@@ -31,37 +32,25 @@ public class TestingClientApp {
         CommandAPDU commandAPDUList = new CommandAPDU(0x00, 0x01, 0x00, 0x00);
         ResponseAPDU responseList = simulator.transmitCommand(commandAPDUList);
         System.out.println("List secrets:");
+        System.out.println("Data length:" + responseList.getData().length);
         System.out.println(new String(responseList.getData()));
 
 
-        String DEFAULT_PIN = "1234";
-        String secretName = "Secret1";
-        byte[] DEFAULT_PIN_BYTE = DEFAULT_PIN.getBytes();
-        byte[] secretNameBytes = secretName.getBytes();
-//
-        // Create a new buffer with space for the length byte and the PIN bytes
-        byte[] data = new byte[DEFAULT_PIN_BYTE.length + secretNameBytes.length + 1];
-        // Set the first byte of the buffer to the length of the PIN array
-        data[0] = (byte) secretNameBytes.length;        // Copy the PIN bytes into the buffer starting from index 1
-        System.arraycopy((DEFAULT_PIN+secretName).getBytes(), 0, data, 1, DEFAULT_PIN.length()+ secretName.length());
-
-
-//        byte[] secretName = "Secret1".getBytes();
-//        byte[] data = new byte[secretName.length + 1];
-//        data[0] = (byte) secretName.length;
-//        System.arraycopy(secretName, 0, data, 1, secretName.length);
+        byte[] DEFAULT_PIN = new byte[]{0x01, 0x02, 0x03, 0x04};
+        byte secretName = (byte) 0x01;
 
         CommandAPDU revealSecretApdu = ApduFactory.genericApdu(
                 (byte) 0x00, // CLA
                 (byte) 0x02, // INS_GET_SECRET_VALUE
-                (byte) 0x00, // P1
+                secretName, // P1
                 (byte) 0x00, // P2
-                data         // Data
+                DEFAULT_PIN         // Data
         );
         // Transmit the APDU command to the JavaCard applet
         ResponseAPDU responseReveal = simulator.transmitCommand(revealSecretApdu);
         System.out.println("Reveal secret:");
         System.out.println(new String(responseReveal.getData()));
+        System.out.println("SW: " + (short) responseReveal.getSW());
 
         CommandAPDU commandGetState = new CommandAPDU(0x00, 0x03, 0x00, 0x00);
         ResponseAPDU responseGetState = simulator.transmitCommand(commandGetState);
@@ -69,34 +58,25 @@ public class TestingClientApp {
         System.out.println(TypeConverter.bytesToHex(responseGetState.getData()));
 
 
-//        byte[] DEFAULT_PIN_BYTE = DEFAULT_PIN.getBytes();
-        // Create a new buffer with space for the length byte and the PIN bytes
-        byte[] buffer = new byte[DEFAULT_PIN_BYTE.length];
-        // Set the first byte of the buffer to the length of the PIN array
-//        buffer[0] = (byte) DEFAULT_PIN_BYTE.length;
-        // Copy the PIN bytes into the buffer starting from index 1
-        System.arraycopy(DEFAULT_PIN_BYTE, 0, buffer, 0, DEFAULT_PIN_BYTE.length);
-
-
-        CommandAPDU pinCheck = new CommandAPDU(0x00, 0x04, 0x00, 0x00, buffer);
+        CommandAPDU pinCheck = new CommandAPDU(0x00, 0x04, 0x00, 0x00, DEFAULT_PIN);
         ResponseAPDU responseVerifyPIN = simulator.transmitCommand(pinCheck);
 //        System.out.println(TypeConverter.bytesToHex(responseVerifyPIN.getData()));
 
 
 
-        String NEW_PIN = "2323";
-        byte[] NEW_PIN_BYTES = NEW_PIN.getBytes();
+        byte[] NEW_PIN = new byte[]{0x06, 0x02, 0x07, 0x06};
+        byte[] pinData = new byte[8];
+
         // Create a new buffer with space for the length byte and the PIN bytes
-        byte[] pinData = new byte[DEFAULT_PIN_BYTE.length + NEW_PIN_BYTES.length];
-        // Set the first byte of the buffer to the length of the PIN array
-//        pinData[0] = (byte) DEFAULT_PIN_BYTE.length;
-        // Copy the PIN bytes into the buffer starting from index 1
-        System.arraycopy((DEFAULT_PIN+NEW_PIN).getBytes(), 0, pinData, 0, 8);
+
+        System.arraycopy(DEFAULT_PIN, 0, pinData, 0, DEFAULT_PIN.length);
+        System.arraycopy(NEW_PIN, 0, pinData, DEFAULT_PIN.length, NEW_PIN.length);
 
         CommandAPDU pinChange = new CommandAPDU(0x00, 0x05, 0x00, 0x00, pinData);
         ResponseAPDU responseChangePIN = simulator.transmitCommand(pinChange);
         System.out.println("Change PIN:");
-        System.out.println(TypeConverter.bytesToHex(responseChangePIN.getData()));
+        System.out.println("Rtr: " + (short) responseChangePIN.getSW());
+        System.out.println("0x9000: " + (short) 0x9000);
     }
 
 
