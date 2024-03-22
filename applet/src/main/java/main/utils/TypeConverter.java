@@ -24,4 +24,14 @@ public class TypeConverter {
         }
         return new String(hexChars);
     }
+
+    public static byte[] stringIntToByteArray(String str) {
+        byte[] bytes = new byte[str.length()];
+
+        for (int i = 0; i < str.length(); i++) {
+            bytes[i] = (byte) (str.charAt(i) - '0');
+        }
+
+        return bytes;
+    }
 }

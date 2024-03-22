@@ -179,15 +179,17 @@ public class InputParser {
 
         String trimmedKey = key.trim();
 
-       if (!trimmedKey.chars().allMatch(Character::isDigit)) {
-           Byte keyIndex = IndexMapper.NAME_TO_INDEX.get(key);
+        for (int i = 0; i < trimmedKey.length(); i++) {
+            if (!Character.isDigit(trimmedKey.charAt(i))) {
+                Byte keyIndex = IndexMapper.NAME_TO_INDEX.get(key);
 
-           if (keyIndex == null) {
-               throw new IllegalArgumentException("Query key does not exist: " + key);
-           }
+                if (keyIndex == null) {
+                    throw new IllegalArgumentException("Query key does not exist: " + key);
+                }
 
-           return keyIndex;
-       }
+                return keyIndex;
+            }
+        }
 
        try {
            short shortKey = Byte.parseByte(trimmedKey);

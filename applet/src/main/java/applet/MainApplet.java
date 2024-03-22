@@ -3,6 +3,7 @@ package applet;
 import java.util.Arrays;
 
 import javacard.framework.*;
+import sun.security.provider.SHA;
 
 public class MainApplet extends Applet implements MultiSelectable {
 	/**
@@ -15,29 +16,37 @@ public class MainApplet extends Applet implements MultiSelectable {
 	 * TODO: ClientApp - lepší posílání APDUs apod
 	 * */
 
-	private static final byte INS_LIST_SECRETS = (byte) 0x01;
-	private static final byte INS_GET_SECRET_VALUE = (byte) 0x02;
-	private static final byte INS_GET_STATE = (byte) 0x03;
-	static final byte INS_VERIFY_PIN = (byte) 0x04;
-	static final byte INS_CHANGE_PIN = (byte) 0x05;
+	private static final byte INS_LIST_SECRETS = (byte) 0xD7;
+	private static final byte INS_GET_SECRET_VALUE = (byte) 0x11;
+	private static final byte INS_GET_STATE = (byte) 0x1C;
+	static final byte INS_VERIFY_PIN = (byte) 0x1D;
+	static final byte INS_CHANGE_PIN = (byte) 0xC2;
 
-	private static final short MAX_SECRET_COUNT = 10;
+	private static final short MAX_SECRET_COUNT = 16;
 	private static final short MAX_SECRET_NAME_LENGTH = 20;
-	private static final short MAX_SECRET_VALUE_LENGTH = 20;
+	static final short MAX_SECRET_VALUE_LENGTH = 20;
 
-	private byte[][] secretNames;
-	private byte[][] secretValues;
-	private short secretCount;
+	public final byte SECRET_NOT_FILLED = (byte) 0xC4;
+	public final byte SECRET_FILLED = (byte) 0x26;
 
-	private OwnerPIN pin;
 	static final byte PIN_LENGTH = (byte) 0x04;
 	static final byte PIN_MAX_RETRIES = (byte) 0x03;
 	private final byte[] DEFAULT_PIN = {(byte) 0x01, (byte) 0x02, (byte) 0x03, (byte) 0x04};
 
 	private final byte[] SECOND_PIN = {(byte) 0x02, (byte) 0x02, (byte) 0x04, (byte) 0x04};
 
+	//PIN1 and PIN2 default offsets
+	private final short[] PIN_DEFAULT_OFFSETS = {0x05, 0x09, 0x09, 0x0D};
+
 	private final byte RTR_PIN_SUCCESS = (byte) 0x90;
 	private final byte RTR_PIN_FAILED = (byte) 0xCF;
+
+	//Content of secrets
+	private SecretStore[] secretValues;
+	private byte[] secretStatus;
+	private short secretCount;
+
+	private OwnerPIN pin;
 	private StateModel stateModel; // Instance of StateModel
 
 	public static void install(byte[] bArray, short bOffset, byte bLength) {
@@ -48,17 +57,35 @@ public class MainApplet extends Applet implements MultiSelectable {
 		//first initiate in state_applet_uploaded
 		stateModel = new StateModel(StateModel.STATE_APPLET_UPLOADED);
 
-		secretNames = new byte[MAX_SECRET_COUNT][MAX_SECRET_NAME_LENGTH];
-		secretValues = new byte[MAX_SECRET_COUNT][MAX_SECRET_VALUE_LENGTH];
+		secretValues = new SecretStore[MAX_SECRET_COUNT];
+		secretStatus = new byte[MAX_SECRET_COUNT];
+
+		for (short i = (short) 0; i < MAX_SECRET_COUNT; i++) {
+			secretValues[i] = new SecretStore();
+		}
+
+		for (short i = (short) 0; i < MAX_SECRET_COUNT; i++) {
+			secretStatus[i] = SECRET_NOT_FILLED;
+		}
+
 		secretCount = 0;
 
 		pin = new OwnerPIN(PIN_MAX_RETRIES, PIN_LENGTH);
 		pin.update(DEFAULT_PIN, (short) 0, PIN_LENGTH);
 
 		// Hardcoded secret names and values
-		storeSecret("Secret1".getBytes(), "Value1".getBytes());
-		storeSecret("Secret2".getBytes(), "Value2".getBytes());
-		storeSecret("Secret3".getBytes(), "Value3".getBytes());
+		storeSecret(
+				(short) 0x01,
+				new byte[]{'V', 'a', 'l', 'u', 'e', '1'}
+		);
+		storeSecret(
+				(short) 0x07,
+				new byte[]{'V', 'a', 'l', 'u', 'e', '2'}
+		);
+		storeSecret(
+				(short) 0x0A,
+				new byte[]{'V', 'a', 'l', 'u', 'e', '3'}
+		);
 
 		// more state changes just for demo purposes
 		// stateModel.setSecondaryState(StateModel.SECURE_CHANNEL_ESTABLISHED);
@@ -89,7 +116,7 @@ public class MainApplet extends Applet implements MultiSelectable {
 //				stateModel.changeState(StateModel.STATE_PRIVILEGED);
 //				// Check if the function is allowed in the current state
 //				stateModel.checkAllowedFunction(StateModel.FNC_lookupSecret);
-				getSecretValue(apdu, dataLength);
+				getSecretValue(apdu);
 				break;
 			case INS_GET_STATE:
 				// Return the current state of the applet
@@ -107,22 +134,10 @@ public class MainApplet extends Applet implements MultiSelectable {
 	}
 
 	private void listSecrets(APDU apdu) {
-		byte[] buffer = apdu.getBuffer();
-		short len = 0;
-
-		// Prepare response with secret names
-		for (short i = 0; i < secretCount; i++) {
-			// Find the end of the secret name
-			short nameLength = secretNames[i][0]; // Get the stored name length
-			// Copy the secret name to the response buffer, skipping the first byte (length)
-			Util.arrayCopyNonAtomic(secretNames[i], (short) 1, buffer, len, nameLength);
-			len += nameLength;
-			// Add a newline character for formatting
-			buffer[len++] = '\n';
-		}
-
 		// Send response
-		apdu.setOutgoingAndSend((short) 0, len);
+		apdu.setOutgoing();
+		apdu.setOutgoingLength(MAX_SECRET_COUNT);
+		apdu.sendBytesLong(secretStatus, (short) 0, MAX_SECRET_COUNT);
 	}
 
 	public boolean select(boolean b) {
@@ -131,96 +146,74 @@ public class MainApplet extends Applet implements MultiSelectable {
 
 	public void deselect(boolean b) {
 
+		if (stateModel.getState() != StateModel.STATE_APPLET_UPLOADED) {
+			stateModel.changeState(StateModel.STATE_UNPRIVILEGED);
+		}
+
 	}
 
-	private void storeSecret(byte[] name, byte[] value) {
-		if (secretCount < MAX_SECRET_COUNT) {
-			// Ensure the lengths of name and value are within the maximum limits
-			if (name.length <= MAX_SECRET_NAME_LENGTH && value.length <= MAX_SECRET_VALUE_LENGTH) {
-				// Ensure there is enough space in the secretNames and secretValues arrays
-				if ((short)(name.length + 1) <= MAX_SECRET_NAME_LENGTH && (short)value.length <= MAX_SECRET_VALUE_LENGTH) {
-					// Store the length of the name as the first byte
-					secretNames[secretCount][0] = (byte) name.length;
-					// Copy the name to the secretNames array, starting from the second byte
-					Util.arrayCopyNonAtomic(name, (short) 0, secretNames[secretCount], (short) 1, (short) name.length);
-					// Copy the value to the secretValues array
-					Util.arrayCopyNonAtomic(value, (short) 0, secretValues[secretCount], (short) 0, (short) value.length);
-					// Increment the secret count
-					secretCount++;
-				} else {
-					// If the name length exceeds the maximum or value length exceeds the maximum, throw an exception
-					ISOException.throwIt(ISO7816.SW_WRONG_DATA);
-				}
-			} else {
-				// If the length of name or value exceeds the maximum allowed, throw an exception
-				ISOException.throwIt(ISO7816.SW_WRONG_DATA);
-			}
-		} else {
-			// If the maximum number of secrets has been reached, throw an exception
+	//TODO: Add value to the SecretStore array and set the secret (at the same index) to filled status
+	private void storeSecret(short index, byte[] value) {
+
+		// Check if the store is full
+		if (secretCount >= MAX_SECRET_COUNT) {
 			ISOException.throwIt(ISO7816.SW_FILE_FULL);
 		}
+
+		// Check if the index is out of range
+		if (index >= MAX_SECRET_COUNT) {
+			ISOException.throwIt(ISO7816.SW_WRONG_LENGTH);
+		}
+
+		// Check if index is a negative number
+		if (index < 0) {
+			ISOException.throwIt(ISO7816.SW_WRONG_LENGTH);
+		}
+
+		short valueLength = (short) value.length;
+
+		// Check if the value being stored is too long
+		if (valueLength > MAX_SECRET_VALUE_LENGTH) {
+			ISOException.throwIt(ISO7816.SW_WRONG_LENGTH);
+		}
+
+		// Store the value
+		Util.arrayCopyNonAtomic(value, (short) 0, secretValues[index].secretValue, (short) 0, valueLength);
+		secretValues[index].setLength(valueLength);
+		secretStatus[index] = SECRET_FILLED;
+		secretCount++;
 	}
 
-	private void getSecretValue(APDU apdu, short dataLength) {
-		if (verifyPIN(apdu,(short) 6, (short) 10) != RTR_PIN_SUCCESS)
-			ISOException.throwIt((short)((short) 0x63c0 | (short) pin.getTriesRemaining()));
+	private void getSecretValue(APDU apdu) {
 
-		stateModel.changeState(StateModel.STATE_PRIVILEGED);
+		// Verify PIN
+		if (verifyPIN(apdu, ISO7816.OFFSET_CDATA, (short) 9) != RTR_PIN_SUCCESS) {
+			ISOException.throwIt(ISO7816.SW_SECURITY_STATUS_NOT_SATISFIED);
+		}
 
 		byte[] apduBuffer = apdu.getBuffer();
+		byte queryKey = apduBuffer[ISO7816.OFFSET_P1];
 
 		// Check if the data length is at least one byte
-		if (dataLength < 1) {
+		if (queryKey < 0) {
 			ISOException.throwIt(ISO7816.SW_WRONG_LENGTH);
 		}
 
-		// Extract secret name from APDU buffer
-		short nameOffset = ISO7816.OFFSET_CDATA;
-		short nameLength = apduBuffer[nameOffset];
-		if (nameLength + 1 > dataLength) {
+		// Check if the query key is out of range
+		if (queryKey >= MAX_SECRET_COUNT) {
 			ISOException.throwIt(ISO7816.SW_WRONG_LENGTH);
 		}
 
-		// Compare the provided secret name with stored names
-		for (short i = 0; i < secretCount; i++) {
-			// Get the stored secret name and its length
-			short storedNameLength = secretNames[i][0];
-			byte[] storedName = new byte[storedNameLength];
-			Util.arrayCopyNonAtomic(secretNames[i], (short) 1, storedName, (short) 0, storedNameLength);
-
-			// Check if the lengths are equal
-			if (nameLength != storedNameLength) {
-				continue; // Lengths don't match, skip this secret
-			}
-
-			// Compare each byte of the name
-			boolean match = true;
-			for (short j = 0; j < nameLength; j++) {
-				if (apduBuffer[nameOffset + PIN_LENGTH + j + 1] != storedName[j]) {
-					match = false;
-					break;
-				}
-			}
-
-			// If all bytes match, send back the corresponding secret value
-			if (match) {
-				short valueLength = (short) secretValues[i].length;
-				// Determine the actual length of the value
-				for (short k = 0; k < valueLength; k++) {
-					if (secretValues[i][k] == 0) {
-						valueLength = k;
-						break;
-					}
-				}
-				apdu.setOutgoing();
-				apdu.setOutgoingLength(valueLength);
-				apdu.sendBytesLong(secretValues[i], (short) 0, valueLength);
-				return;
-			}
+		// Check if the secret is not filled
+		if (secretStatus[queryKey] == SECRET_NOT_FILLED) {
+			ISOException.throwIt(ISO7816.SW_DATA_INVALID);
 		}
 
-		// If no match found, send an error response
-		ISOException.throwIt(ISO7816.SW_DATA_INVALID);
+		short secretLength = secretValues[queryKey].getLength();
+
+		apdu.setOutgoing();
+		apdu.setOutgoingLength(secretLength);
+		apdu.sendBytesLong(secretValues[queryKey].secretValue, (short) 0, secretLength);
 	}
 
 	private void sendState(APDU apdu) {
@@ -241,31 +234,24 @@ public class MainApplet extends Applet implements MultiSelectable {
 */
 	// Method to verify PIN
 	private byte verifyPIN(APDU apdu, short startInter, short endInter) {
-		byte[] pinAttempt = getPinFromBuffer(apdu.getBuffer(),startInter,endInter);
-		return pin.check(pinAttempt, (short) 0, (byte) pinAttempt.length) ? RTR_PIN_SUCCESS : RTR_PIN_FAILED;
+
+		byte[] apduBuffer = apdu.getBuffer();
+
+		return pin.check(apduBuffer, startInter, PIN_LENGTH)
+				? RTR_PIN_SUCCESS : RTR_PIN_FAILED;
 	}
 
-	private byte[] getPinFromBuffer(byte[] buffer, short startInter, short endInter) {
-		String pinBuffer = new String(Arrays.copyOfRange(buffer, startInter, endInter));
-		byte[] bufferPIN = new byte[4];
+	private void updatePIN(APDU apdu) {
 
-		for (short i = 0; i < pinBuffer.length(); i++) {
-			bufferPIN[i] = (byte) Character.getNumericValue(pinBuffer.charAt(i));
-		}
-		return bufferPIN;
-	}
+		byte[] apduBuffer = apdu.getBuffer();
 
-	private byte updatePIN(APDU apdu) {
+		if (verifyPIN(apdu,PIN_DEFAULT_OFFSETS[0], PIN_DEFAULT_OFFSETS[1]) != RTR_PIN_SUCCESS)
+			ISOException.throwIt(ISO7816.SW_SECURITY_STATUS_NOT_SATISFIED);
 
-		if (verifyPIN(apdu,(short) 5, (short) 9) != RTR_PIN_SUCCESS)
-			ISOException.throwIt((short)((short) 0x63c0 | (short) pin.getTriesRemaining()));
-
-//		stateModel.changeState(StateModel.STATE_PRIVILEGED);
-
-		byte[] newPin = getPinFromBuffer(apdu.getBuffer(),(short) 9,(short) 13);
-		pin.update(newPin, (short) 0, (byte) PIN_LENGTH);
+		stateModel.changeState(StateModel.STATE_PRIVILEGED);
+		pin.update(apduBuffer, PIN_DEFAULT_OFFSETS[2], PIN_LENGTH);
 
 //		stateModel.changeState(StateModel.STATE_UNPRIVILEGED);
-		return RTR_PIN_SUCCESS;
+		ISOException.throwIt(ISO7816.SW_NO_ERROR);
 	}
 }

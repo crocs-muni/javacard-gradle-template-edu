@@ -53,6 +53,14 @@ public class InputParserTest {
     }
 
     @Test
+    public void testPinTooLong() {
+        InputParser inputParser = new InputParser();
+        assertThrows(IllegalArgumentException.class, () -> {
+            inputParser.parseArgs(new String[]{"-c", "real", "-i", "change_pin", "-n", "4321802850", "-p", "5678443"});
+        });
+    }
+
+    @Test
     public void testCorrectRevealSecret() {
         InputParser inputParser = new InputParser();
         inputParser.parseArgs(new String[]{"-c", "sim", "-i", "reveal_secret", "-p", "1234", "-k", "7"});
