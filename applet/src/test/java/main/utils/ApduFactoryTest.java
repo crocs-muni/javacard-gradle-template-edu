@@ -3,12 +3,11 @@ package main.utils;
 import main.utils.constants.ClassConstants;
 import main.utils.constants.InstructionConstants;
 import main.utils.constants.OffsetConstants;
-import org.junit.Test;
+import org.junit.jupiter.api.*;
 
 import javax.smartcardio.CommandAPDU;
 
 import static org.junit.jupiter.api.Assertions.*;
-
 public class ApduFactoryTest {
 
     @Test
